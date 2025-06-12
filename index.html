@@ -50,6 +50,9 @@
       background-color: #b49fcc;
       color: white;
     }
+    .calendar .has-data {
+      background-color: #e2d6f3;
+    }
   </style>
 </head>
 <body>
@@ -86,8 +89,9 @@
   <script>
     const weightChartCtx = document.getElementById('weightChart').getContext('2d');
     let weightChart;
+    let selectedDate = new Date();
 
-    function getDateKey(date = new Date()) {
+    function getDateKey(date = selectedDate) {
       return 'log-' + date.toISOString().split('T')[0];
     }
 
@@ -102,6 +106,7 @@
       localStorage.setItem(getDateKey(), JSON.stringify(data));
       updateWeightSummary();
       generateChart();
+      generateCalendar();
       alert('保存しました');
     }
 
@@ -139,6 +144,50 @@
       });
     }
 
+    function generateCalendar() {
+      const calendar = document.getElementById('calendar');
+      calendar.innerHTML = '';
+
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = now.getMonth();
+      const firstDay = new Date(year, month, 1);
+      const lastDay = new Date(year, month + 1, 0);
+
+      for (let i = 0; i < firstDay.getDay(); i++) {
+        calendar.innerHTML += '<div></div>';
+      }
+
+      for (let d = 1; d <= lastDay.getDate(); d++) {
+        const date = new Date(year, month, d);
+        const dateKey = 'log-' + date.toISOString().split('T')[0];
+        const hasData = !!localStorage.getItem(dateKey);
+
+        const cell = document.createElement('div');
+        cell.textContent = d;
+        if (hasData) cell.classList.add('has-data');
+        if (date.toDateString() === selectedDate.toDateString()) cell.classList.add('selected');
+
+        cell.addEventListener('click', () => {
+          selectedDate = date;
+          loadData();
+          generateCalendar();
+        });
+        calendar.appendChild(cell);
+      }
+    }
+
+    function loadData() {
+      const key = getDateKey();
+      const log = JSON.parse(localStorage.getItem(key)) || {};
+      document.getElementById('currentWeight').value = log.weight || '';
+      document.getElementById('goalWeight').value = log.goal || '';
+      document.getElementById('exercised').checked = log.exercised || false;
+      document.getElementById('exerciseNote').value = log.exerciseNote || '';
+      document.getElementById('memo').value = log.memo || '';
+      updateWeightSummary();
+    }
+
     function toggleDarkMode() {
       document.body.classList.toggle('dark-mode');
     }
@@ -161,6 +210,8 @@
     window.onload = () => {
       updateWeightSummary();
       generateChart();
+      generateCalendar();
+      loadData();
     };
   </script>
 </body>
