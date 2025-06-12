@@ -9,7 +9,7 @@
       font-family: sans-serif;
       margin: 0;
       padding: 0;
-      background-color: #f0f0f0;
+      background-color: #f3efff;
       color: #333;
     }
     .dark-mode {
@@ -17,7 +17,7 @@
       color: #f0f0f0;
     }
     header, footer {
-      background-color: #4CAF50;
+      background-color: #b49fcc;
       color: white;
       padding: 10px;
       text-align: center;
@@ -32,6 +32,23 @@
     .photo-preview img {
       max-width: 100px;
       margin: 5px;
+    }
+    .calendar {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 4px;
+      margin-top: 10px;
+    }
+    .calendar div {
+      padding: 4px;
+      text-align: center;
+      background-color: #fff;
+      border: 1px solid #ccc;
+      cursor: pointer;
+    }
+    .calendar .selected {
+      background-color: #b49fcc;
+      color: white;
     }
   </style>
 </head>
@@ -58,122 +75,92 @@
     </form>
 
     <canvas id="weightChart" width="300" height="150"></canvas>
-    <div id="calendar"></div>
+    <div id="calendar" class="calendar"></div>
   </main>
 
   <footer>
     <button id="exportBtn">CSVエクスポート</button>
   </footer>
 
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script>
-    let selectedDate = null;
+    const weightChartCtx = document.getElementById('weightChart').getContext('2d');
+    let weightChart;
+
     function getDateKey(date = new Date()) {
       return 'log-' + date.toISOString().split('T')[0];
     }
 
     function saveData() {
-      const weight = document.getElementById('currentWeight').value;
-      const goal = document.getElementById('goalWeight').value;
-      const exercised = document.getElementById('exercised').checked;
-      const memo = document.getElementById('memo').value;
-      const exerciseNote = document.getElementById('exerciseNote').value;
-      const log = {
-        weight,
-        goal,
-        exercised,
-        memo,
-        exerciseNote
+      const data = {
+        weight: document.getElementById('currentWeight').value,
+        goal: document.getElementById('goalWeight').value,
+        exercised: document.getElementById('exercised').checked,
+        exerciseNote: document.getElementById('exerciseNote').value,
+        memo: document.getElementById('memo').value
       };
-      localStorage.setItem(getDateKey(), JSON.stringify(log));
-      setInitialWeightIfNeeded(weight);
-      updateWeightSummary(weight, goal);
+      localStorage.setItem(getDateKey(), JSON.stringify(data));
+      updateWeightSummary();
+      generateChart();
       alert('保存しました');
     }
 
-    function getInitialWeight() {
-      return localStorage.getItem('initialWeight');
+    function updateWeightSummary() {
+      const summary = document.getElementById('weightSummary');
+      const key = getDateKey();
+      const log = JSON.parse(localStorage.getItem(key));
+      if (!log || !log.weight || !log.goal) return;
+      const diff = (parseFloat(log.weight) - parseFloat(log.goal)).toFixed(1);
+      summary.textContent = `目標まであと ${diff > 0 ? '+' : ''}${diff} kg`;
     }
 
-    function setInitialWeightIfNeeded(weight) {
-      if (!getInitialWeight() && weight) {
-        localStorage.setItem('initialWeight', weight);
-      }
-    }
-
-    function updateWeightSummary(weight, goal) {
-      const summaryDiv = document.getElementById('weightSummary');
-      if (!summaryDiv) return;
-      const initialWeight = parseFloat(getInitialWeight());
-      const currentWeight = parseFloat(weight);
-      const goalWeight = parseFloat(goal);
-
-      let changeFromStart = '--';
-      let changeToGoal = '--';
-
-      if (!isNaN(initialWeight) && !isNaN(currentWeight)) {
-        const diff = (currentWeight - initialWeight).toFixed(1);
-        changeFromStart = (diff > 0 ? '+' : '') + diff + 'kg';
-      }
-      if (!isNaN(currentWeight) && !isNaN(goalWeight)) {
-        const diffGoal = (currentWeight - goalWeight).toFixed(1);
-        changeToGoal = 'あと ' + (diffGoal > 0 ? diffGoal : 0) + 'kg';
-      }
-
-      summaryDiv.innerHTML = `開始からの変化: <strong>${changeFromStart}</strong>　｜　目標まで: <strong>${changeToGoal}</strong>`;
-    }
-
-    function exportDataToCSV() {
-      const keys = Object.keys(localStorage).filter(key => key.startsWith('log-')).sort();
-      let csvContent = '日付,体重,目標体重,運動,メモ,運動メモ\n';
-      keys.forEach(key => {
-        const log = JSON.parse(localStorage.getItem(key));
-        const date = key.replace('log-', '');
-        const row = [
-          date,
-          log.weight || '',
-          log.goal || '',
-          log.exercised ? '○' : '×',
-          log.memo ? '"' + log.memo.replace(/"/g, '""') + '"' : '',
-          log.exerciseNote ? '"' + log.exerciseNote.replace(/"/g, '""') + '"' : ''
-        ];
-        csvContent += row.join(',') + '\n';
+    function generateChart() {
+      const keys = Object.keys(localStorage).filter(k => k.startsWith('log-')).sort();
+      const labels = keys.map(k => k.replace('log-', ''));
+      const weights = keys.map(k => {
+        const item = JSON.parse(localStorage.getItem(k));
+        return parseFloat(item.weight);
       });
 
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      link.download = 'health_log.csv';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      if (weightChart) weightChart.destroy();
+
+      weightChart = new Chart(weightChartCtx, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [{
+            label: '体重',
+            data: weights,
+            borderColor: '#b49fcc',
+            backgroundColor: '#d4c8e6',
+            tension: 0.3
+          }]
+        }
+      });
     }
 
     function toggleDarkMode() {
       document.body.classList.toggle('dark-mode');
     }
 
-    function promptPassword() {
-      const storedPass = localStorage.getItem('appPassword');
-      if (storedPass) {
-        let input = prompt('パスワードを入力してください');
-        if (input !== storedPass) {
-          alert('パスワードが違います');
-          location.reload();
-        }
-      } else {
-        let newPass = prompt('初回起動です。パスワードを設定してください');
-        if (newPass) {
-          localStorage.setItem('appPassword', newPass);
-          alert('パスワードが設定されました');
-        }
-      }
-    }
+    document.getElementById('darkModeToggle').addEventListener('click', toggleDarkMode);
+    document.getElementById('exportBtn').addEventListener('click', () => {
+      const keys = Object.keys(localStorage).filter(k => k.startsWith('log-')).sort();
+      let csv = '日付,体重,目標体重,運動,運動メモ,メモ\n';
+      keys.forEach(k => {
+        const log = JSON.parse(localStorage.getItem(k));
+        csv += `${k.replace('log-', '')},${log.weight},${log.goal},${log.exercised ? '○' : '×'},"${log.exerciseNote}","${log.memo}"\n`;
+      });
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = 'health_log.csv';
+      link.click();
+    });
 
     window.onload = () => {
-      promptPassword();
-      updateWeightSummary('', '');
-      document.getElementById('exportBtn').onclick = exportDataToCSV;
-      document.getElementById('darkModeToggle').onclick = toggleDarkMode;
+      updateWeightSummary();
+      generateChart();
     };
   </script>
 </body>
