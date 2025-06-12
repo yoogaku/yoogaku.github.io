@@ -2,32 +2,19 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Simple Health Log</title>
   <link rel="manifest" href="manifest.json" />
   <link rel="apple-touch-icon" href="apple-touch-icon.png" />
   <style>
-    body {
-      font-family: sans-serif;
-      padding: 1rem;
-    }
-    .dark-mode {
-      background-color: #121212;
-      color: #f0f0f0;
-    }
+    body { font-family: sans-serif; padding: 1rem; }
+    .dark-mode { background-color: #121212; color: #f0f0f0; }
     .calendar-cell {
-      display: inline-block;
-      width: 64px;
-      height: 64px;
-      margin: 2px;
-      border: 1px solid #ccc;
-      text-align: center;
-      font-size: 12px;
-      vertical-align: top;
+      display: inline-block; width: 64px; height: 64px;
+      margin: 2px; border: 1px solid #ccc;
+      text-align: center; font-size: 12px; vertical-align: top;
     }
-    img {
-      max-width: 100%;
-    }
+    img { max-width: 100%; }
   </style>
 </head>
 <body>
@@ -45,7 +32,7 @@
     <button onclick="resetForm()">リセット</button>
     <button id="exportBtn">CSVエクスポート</button>
     <br /><br />
-    <button id="darkModeToggle">🌙 ダークモード切替</button>
+    <button id="darkModeToggle" onclick="toggleDarkMode()">🌙 ダークモード切替</button>
   </div>
   <hr />
   <div id="calendar"></div>
@@ -57,7 +44,15 @@
   <div id="historyList"></div>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script>
-    // ここにJavaScriptコードが続く（すでにヨーコ仕様で完成済みの部分）
+    function saveData() {
+      alert('保存しました！（仮）');
+    }
+    function resetForm() {
+      location.reload();
+    }
+    function toggleDarkMode() {
+      document.body.classList.toggle('dark-mode');
+    }
   </script>
 </body>
 </html>
