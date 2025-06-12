@@ -2,57 +2,179 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Simple Health Log</title>
-  <link rel="manifest" href="manifest.json" />
-  <link rel="apple-touch-icon" href="apple-touch-icon.png" />
   <style>
-    body { font-family: sans-serif; padding: 1rem; }
-    .dark-mode { background-color: #121212; color: #f0f0f0; }
-    .calendar-cell {
-      display: inline-block; width: 64px; height: 64px;
-      margin: 2px; border: 1px solid #ccc;
-      text-align: center; font-size: 12px; vertical-align: top;
+    body {
+      font-family: sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #f0f0f0;
+      color: #333;
     }
-    img { max-width: 100%; }
+    .dark-mode {
+      background-color: #121212;
+      color: #f0f0f0;
+    }
+    header, footer {
+      background-color: #4CAF50;
+      color: white;
+      padding: 10px;
+      text-align: center;
+    }
+    main {
+      padding: 10px;
+    }
+    input[type="file"] {
+      display: block;
+      margin-bottom: 10px;
+    }
+    .photo-preview img {
+      max-width: 100px;
+      margin: 5px;
+    }
   </style>
 </head>
 <body>
-  <h1>Simple Health Log</h1>
-  <div id="weightSummary"></div>
-  <hr />
-  <div>
-    <label>目標体重: <input id="goalWeight" type="number" /></label><br />
-    <label>今日の体重: <input id="currentWeight" type="number" /></label><br />
-    <label>運動した: <input id="exercised" type="checkbox" /></label><br />
-    <label>メモ: <input id="memo" type="text" /></label><br />
-    <div id="exerciseNoteContainer"></div>
-    <div id="photoPreview"></div>
-    <button onclick="saveData()">保存</button>
-    <button onclick="resetForm()">リセット</button>
+  <header>
+    <h1>Simple Health Log</h1>
+    <button id="darkModeToggle">🌙</button>
+  </header>
+
+  <main>
+    <div id="weightSummary"></div>
+    <form id="healthForm">
+      <label>体重: <input type="number" id="currentWeight" step="0.1" /></label><br />
+      <label>目標体重: <input type="number" id="goalWeight" step="0.1" /></label><br />
+      <label>運動した: <input type="checkbox" id="exercised" /></label><br />
+      <label>運動メモ: <input type="text" id="exerciseNote" /></label><br />
+      <label>メモ: <textarea id="memo"></textarea></label><br />
+      <label>食事・おやつ写真:</label>
+      <input type="file" id="mealPhoto0" accept="image/*" /><br />
+      <input type="file" id="mealPhoto1" accept="image/*" /><br />
+      <input type="file" id="mealPhoto2" accept="image/*" /><br />
+      <div id="photoPreview" class="photo-preview"></div>
+      <button type="button" onclick="saveData()">保存</button>
+    </form>
+
+    <canvas id="weightChart" width="300" height="150"></canvas>
+    <div id="calendar"></div>
+  </main>
+
+  <footer>
     <button id="exportBtn">CSVエクスポート</button>
-    <br /><br />
-    <button id="darkModeToggle" onclick="toggleDarkMode()">🌙 ダークモード切替</button>
-  </div>
-  <hr />
-  <div id="calendar"></div>
-  <hr />
-  <div id="chartContainer">
-    <canvas id="weightChart" height="200"></canvas>
-  </div>
-  <hr />
-  <div id="historyList"></div>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  </footer>
+
   <script>
+    let selectedDate = null;
+    function getDateKey(date = new Date()) {
+      return 'log-' + date.toISOString().split('T')[0];
+    }
+
     function saveData() {
-      alert('保存しました！（仮）');
+      const weight = document.getElementById('currentWeight').value;
+      const goal = document.getElementById('goalWeight').value;
+      const exercised = document.getElementById('exercised').checked;
+      const memo = document.getElementById('memo').value;
+      const exerciseNote = document.getElementById('exerciseNote').value;
+      const log = {
+        weight,
+        goal,
+        exercised,
+        memo,
+        exerciseNote
+      };
+      localStorage.setItem(getDateKey(), JSON.stringify(log));
+      setInitialWeightIfNeeded(weight);
+      updateWeightSummary(weight, goal);
+      alert('保存しました');
     }
-    function resetForm() {
-      location.reload();
+
+    function getInitialWeight() {
+      return localStorage.getItem('initialWeight');
     }
+
+    function setInitialWeightIfNeeded(weight) {
+      if (!getInitialWeight() && weight) {
+        localStorage.setItem('initialWeight', weight);
+      }
+    }
+
+    function updateWeightSummary(weight, goal) {
+      const summaryDiv = document.getElementById('weightSummary');
+      if (!summaryDiv) return;
+      const initialWeight = parseFloat(getInitialWeight());
+      const currentWeight = parseFloat(weight);
+      const goalWeight = parseFloat(goal);
+
+      let changeFromStart = '--';
+      let changeToGoal = '--';
+
+      if (!isNaN(initialWeight) && !isNaN(currentWeight)) {
+        const diff = (currentWeight - initialWeight).toFixed(1);
+        changeFromStart = (diff > 0 ? '+' : '') + diff + 'kg';
+      }
+      if (!isNaN(currentWeight) && !isNaN(goalWeight)) {
+        const diffGoal = (currentWeight - goalWeight).toFixed(1);
+        changeToGoal = 'あと ' + (diffGoal > 0 ? diffGoal : 0) + 'kg';
+      }
+
+      summaryDiv.innerHTML = `開始からの変化: <strong>${changeFromStart}</strong>　｜　目標まで: <strong>${changeToGoal}</strong>`;
+    }
+
+    function exportDataToCSV() {
+      const keys = Object.keys(localStorage).filter(key => key.startsWith('log-')).sort();
+      let csvContent = '日付,体重,目標体重,運動,メモ,運動メモ\n';
+      keys.forEach(key => {
+        const log = JSON.parse(localStorage.getItem(key));
+        const date = key.replace('log-', '');
+        const row = [
+          date,
+          log.weight || '',
+          log.goal || '',
+          log.exercised ? '○' : '×',
+          log.memo ? '"' + log.memo.replace(/"/g, '""') + '"' : '',
+          log.exerciseNote ? '"' + log.exerciseNote.replace(/"/g, '""') + '"' : ''
+        ];
+        csvContent += row.join(',') + '\n';
+      });
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = 'health_log.csv';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
     function toggleDarkMode() {
       document.body.classList.toggle('dark-mode');
     }
+
+    function promptPassword() {
+      const storedPass = localStorage.getItem('appPassword');
+      if (storedPass) {
+        let input = prompt('パスワードを入力してください');
+        if (input !== storedPass) {
+          alert('パスワードが違います');
+          location.reload();
+        }
+      } else {
+        let newPass = prompt('初回起動です。パスワードを設定してください');
+        if (newPass) {
+          localStorage.setItem('appPassword', newPass);
+          alert('パスワードが設定されました');
+        }
+      }
+    }
+
+    window.onload = () => {
+      promptPassword();
+      updateWeightSummary('', '');
+      document.getElementById('exportBtn').onclick = exportDataToCSV;
+      document.getElementById('darkModeToggle').onclick = toggleDarkMode;
+    };
   </script>
 </body>
 </html>
