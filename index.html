@@ -1,0 +1,45 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Simple Health Log</title>
+  <style>
+    body { font-family: sans-serif; padding: 1rem; }
+    .dark-mode { background-color: #121212; color: #f0f0f0; }
+    .calendar-cell {
+      display: inline-block; width: 64px; height: 64px;
+      margin: 2px; border: 1px solid #ccc; text-align: center;
+      font-size: 12px; vertical-align: top;
+    }
+    img { max-width: 100%; }
+  </style>
+</head>
+<body>
+  <h1>Simple Health Log</h1>
+  <div id="weightSummary"></div>
+  <hr>
+  <div>
+    <label>目標体重: <input id="goalWeight" type="number"></label><br>
+    <label>今日の体重: <input id="currentWeight" type="number"></label><br>
+    <label>運動した: <input id="exercised" type="checkbox"></label><br>
+    <label>メモ: <input id="memo" type="text"></label><br>
+    <div id="exerciseContainer"></div>
+    <div id="photoInputs"></div>
+    <button onclick="saveData()">保存</button>
+    <button onclick="resetForm()">リセット</button>
+    <button id="exportBtn">CSVエクスポート</button>
+    <button id="darkModeToggle">🌙 ダークモード切替</button>
+  </div>
+  <hr>
+  <div id="calendar"></div>
+  <hr>
+  <div id="historyList"></div>
+  <script>
+
+// ここに Canvas の JavaScript コード全体を貼り付け済み（省略中）
+
+  </script>
+</body>
+</html>
